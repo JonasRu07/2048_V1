@@ -3,7 +3,12 @@ from random import randint, seed
 from math import log
 from copy import deepcopy
 from sys import exit
-seed(1)
+seed()
+
+#TODO: !! proper check if no available move is possible; don't rely on smart people to not fuck up
+#TODO: optimise move -> redundant code, just moving things in general
+#TODO: general code structure -> packing things together which belong together
+#TODO: DOCUMENT THE SHIT OUT OF THIS
 
 class GUI(object):
     def __init__(self):
@@ -11,7 +16,7 @@ class GUI(object):
 
         self.root = tk.Tk()
         self.root.geometry('490x390')
-        self.root.title('2028')
+        self.root.title('2048')
 
         self.frame_fields = tk.Frame(master=self.root,
                                      bg='#b6aca0',
@@ -35,6 +40,7 @@ class GUI(object):
                                       font='Aral, 20',
                                       text='NAN')
         self.label_counter.place(x=370, y=40, width=100, height=40)
+
         self.root.bind('<Up>', self.event_move)
         self.root.bind('<Down>', self.event_move)
         self.root.bind('<Left>', self.event_move)
@@ -68,7 +74,7 @@ class GUI(object):
 class System(object):
     def __init__(self):
         self.gui: GUI | None = None
-        self.board = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        self.board = [0]*16
         self.counter = 0
 
     def move(self, event:str):
@@ -150,7 +156,6 @@ class System(object):
             print(self.counter)
             exit()
 
-
     def start(self):
         self.gui.load_board(self.board)
         self.gui.start()
@@ -158,6 +163,8 @@ class System(object):
     def set_gui(self, ref_gui):
         self.gui = ref_gui
 
+
+#Code execution and setup
 gui = GUI()
 system = System()
 system.set_gui(gui)
