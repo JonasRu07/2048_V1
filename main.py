@@ -10,7 +10,7 @@ class GUI(object):
         self.system : System | None = None
 
         self.root = tk.Tk()
-        self.root.geometry('390x390')
+        self.root.geometry('490x390')
         self.root.title('2028')
 
         self.frame_fields = tk.Frame(master=self.root,
@@ -29,6 +29,12 @@ class GUI(object):
                          bg='#c6bcb0')
             )
             self.list_fields[i].place(x=(i%4)*70 + 20, y=(i//4)*70 + 20, width=60, height=60)
+
+        self.label_counter = tk.Label(master = self.root,
+                                      bg='#11998e',
+                                      font='Aral, 20',
+                                      text='NAN')
+        self.label_counter.place(x=370, y=40, width=100, height=40)
         self.root.bind('<Up>', self.event_move)
         self.root.bind('<Down>', self.event_move)
         self.root.bind('<Left>', self.event_move)
@@ -42,6 +48,9 @@ class GUI(object):
                 self.list_fields[index].config(bg=self.colours_fields[int(log(value, 2))])
             else:
                 self.list_fields[index].config(bg=self.colours_fields[0])
+
+    def update_counter(self, value):
+        self.label_counter.config(text=value)
 
     def event_move(self, event:tk.Event):
         self.system.move(event.keysym)
@@ -135,12 +144,11 @@ class System(object):
                     break
             if len(tmp_idx_lst) >= 16:
                 break
-
+        self.gui.update_counter(self.counter)
+        self.gui.load_board(self.board)
         if self.board == start_board:
             print(self.counter)
             exit()
-
-        self.gui.load_board(self.board)
 
 
     def start(self):
