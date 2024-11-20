@@ -3,9 +3,8 @@ from random import randint, seed
 from math import log
 from copy import deepcopy
 from sys import exit
-seed()
+seed(1)
 
-#TODO: !! proper check if no available move is possible; don't rely on smart people to not fuck up
 #TODO: optimise move -> redundant code, just moving things in general
 #TODO: general code structure -> packing things together which belong together
 #TODO: DOCUMENT THE SHIT OUT OF THIS
@@ -85,53 +84,63 @@ class System(object):
         self.board: list[int] = [0]*16
         self.counter: int = 0
 
-    def move(self, event: str) -> None:
+    def move(self, event: str, change: bool = True) -> bool | None:
         """
         control of all possible moves, currently all main action happening here
         :param event: event of the arrow keys of a keyboard
+        :param change: if the board should be updated
         :return: None
         """
         start_board = deepcopy(self.board)
+        tmp_counter = deepcopy(self.counter)
         if event == 'Up':
             for i in range(4):
-                tmp_list = [self.board[i]] + [self.board[i + 4]] + [self.board[i + 8]] + [self.board[i + 12]]
-                tmp_list = self.__move_aid(tmp_list, in_front=False)
-                self.board[i], self.board[i + 4], self.board[i + 8], self.board[i + 12] = tmp_list
+                tmp_list = [start_board[i]] + [start_board[i + 4]] + [start_board[i + 8]] + [start_board[i + 12]]
+                tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
+                start_board[i], start_board[i + 4], start_board[i + 8], start_board[i + 12] = tmp_list
         elif event == 'Down':
             for i in range(4):
-                tmp_list = [self.board[i]] + [self.board[i + 4]] + [self.board[i + 8]] + [self.board[i + 12]]
-                tmp_list = self.__move_aid(tmp_list, in_front=True)
-                self.board[i], self.board[i + 4], self.board[i + 8], self.board[i + 12] = tmp_list
+                tmp_list = [start_board[i]] + [start_board[i + 4]] + [start_board[i + 8]] + [start_board[i + 12]]
+                tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
+                start_board[i], start_board[i + 4], start_board[i + 8], start_board[i + 12] = tmp_list
         elif event == 'Left':
             for i in range(0, 16, 4):
-                tmp_list = self.board[i:i+4]
-                tmp_list = self.__move_aid(tmp_list, in_front=False)
-                self.board = self.board[:i] + tmp_list + self.board[i+4:]
+                tmp_list = start_board[i:i+4]
+                tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
+                start_board = start_board[:i] + tmp_list + start_board[i+4:]
         elif event == 'Right':
             for i in range(0, 16, 4):
-                tmp_list = self.board[i:i+4]
-                tmp_list = self.__move_aid(tmp_list, in_front= True)
-                self.board = self.board[:i] + tmp_list + self.board[i+4:]
+                tmp_list = start_board[i:i+4]
+                tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
+                start_board = start_board[:i] + tmp_list + start_board[i+4:]
 
-        tmp_idx_lst  =[]
-        while True:
-            new_piece_index = randint(0,15)
-            if new_piece_index not in tmp_idx_lst:
-                tmp_idx_lst.append(new_piece_index)
-                if self.board[new_piece_index] == 0:
-                    new_piece_value = randint(1, 2 ) * 2
-                    self.counter += new_piece_value
-                    self.board[new_piece_index] = new_piece_value
+        if change:
+            self.board = start_board
+            self.counter = tmp_counter
+
+            tmp_idx_lst  =[]
+            while True:
+                new_piece_index = randint(0,15)
+                if new_piece_index not in tmp_idx_lst:
+                    tmp_idx_lst.append(new_piece_index)
+                    if start_board[new_piece_index] == 0:
+                        new_piece_value = randint(1, 2 ) * 2
+                        self.counter += new_piece_value
+                        start_board[new_piece_index] = new_piece_value
+                        break
+                if len(tmp_idx_lst) >= 16:
                     break
-            if len(tmp_idx_lst) >= 16:
-                break
-        self.gui.update_counter(self.counter)
-        self.gui.load_board(self.board)
-        if self.board == start_board:
-            print(self.counter)
-            exit()
+            self.gui.update_counter(self.counter)
+            self.gui.load_board(self.board)
+            if not self.possible_moves_available(self.board):
+                print("!!! STOPP !!! STOPP !!!")
+        else:
+            if start_board == self.board:
+                return False
+            else:
+                return True
 
-    def __move_aid(self, lst: list[int], in_front: bool = True) -> list[int]:
+    def __move_aid(self, lst: list[int], counter:int, in_front: bool = True) -> (list[int], int):
         """
         support method for move \n
         checking for two fields to merge together and moving them around the board
@@ -151,7 +160,7 @@ class System(object):
                 if current_value[0] != work_list[i]:
                     current_value = (work_list[i], i)
                 elif current_value[0] == work_list[i]:
-                    self.counter += current_value[0] * 2
+                    counter += current_value[0] * 2
                     work_list[current_value[1]] = current_value[0] * 2
                     work_list[i] = 0
                     current_value = (0, -1)
@@ -161,7 +170,19 @@ class System(object):
                 work_list = [0] + work_list
             else:
                 work_list.append(0)
-        return work_list
+        return work_list, counter
+
+    def possible_moves_available(self, check_board:list[int]) -> bool:
+        if 0 in check_board:
+            return True
+        else:
+            if self.move('Up', False) or \
+                    self.move('Down', False) or \
+                    self.move('Right', False) or \
+                    self.move('Left', False):
+                return True
+            else:
+                return False
 
     def start(self):
         self.gui.load_board(self.board)
