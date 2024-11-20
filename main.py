@@ -3,7 +3,7 @@ from random import randint, seed
 from math import log
 from copy import deepcopy
 from sys import exit
-seed()
+seed(1)
 
 #TODO: !! proper check if no available move is possible; don't rely on smart people to not fuck up
 #TODO: optimise move -> redundant code, just moving things in general
@@ -82,60 +82,22 @@ class System(object):
         if event == 'Up':
             for i in range(4):
                 tmp_list = [self.board[i]] + [self.board[i + 4]] + [self.board[i + 8]] + [self.board[i + 12]]
-                while 0 in tmp_list:
-                    tmp_list.remove(0)
-                for j in range(len(tmp_list)-1):
-                    if tmp_list[j] == tmp_list[j+1]:
-                        self.counter += tmp_list[j] * 2
-                        tmp_list[j], tmp_list[j+1] = 0, tmp_list[j] * 2
-                while 0 in tmp_list:
-                    tmp_list.remove(0)
-                while len(tmp_list) != 4:
-                    tmp_list.append(0)
-                self.board[i], self.board[i + 4], self.board[i + 8], self.board[i + 12] = \
-                    tmp_list[0], tmp_list[1], tmp_list[2], tmp_list[3]
+                tmp_list = self.move_aid(tmp_list, in_front=False)
+                self.board[i], self.board[i + 4], self.board[i + 8], self.board[i + 12] = tmp_list
         elif event == 'Down':
             for i in range(4):
                 tmp_list = [self.board[i]] + [self.board[i + 4]] + [self.board[i + 8]] + [self.board[i + 12]]
-                while 0 in tmp_list:
-                    tmp_list.remove(0)
-                for j in range(len(tmp_list)-1):
-                    if tmp_list[j] == tmp_list[j+1]:
-                        self.counter += tmp_list[j] * 2
-                        tmp_list[j], tmp_list[j+1] = 0, tmp_list[j] * 2
-                while 0 in tmp_list:
-                    tmp_list.remove(0)
-                while len(tmp_list) != 4:
-                    tmp_list = [0] + tmp_list
-                self.board[i], self.board[i + 4], self.board[i + 8], self.board[i + 12] = \
-                    tmp_list[0], tmp_list[1], tmp_list[2], tmp_list[3]
+                tmp_list = self.move_aid(tmp_list, in_front=True)
+                self.board[i], self.board[i + 4], self.board[i + 8], self.board[i + 12] = tmp_list
         elif event == 'Left':
             for i in range(0, 16, 4):
                 tmp_list = self.board[i:i+4]
-                while 0 in tmp_list:
-                    tmp_list.remove(0)
-                for j in range(len(tmp_list)-1):
-                    if tmp_list[j] == tmp_list[j+1]:
-                        self.counter += tmp_list[j] * 2
-                        tmp_list[j], tmp_list[j+1] = 0, tmp_list[j] * 2
-                while 0 in tmp_list:
-                    tmp_list.remove(0)
-                while len(tmp_list) != 4:
-                    tmp_list.append(0)
+                tmp_list = self.move_aid(tmp_list, in_front=False)
                 self.board = self.board[:i] + tmp_list + self.board[i+4:]
         elif event == 'Right':
             for i in range(0, 16, 4):
                 tmp_list = self.board[i:i+4]
-                while 0 in tmp_list:
-                    tmp_list.remove(0)
-                for j in range(len(tmp_list)-1):
-                    if tmp_list[j] == tmp_list[j+1]:
-                        self.counter += tmp_list[j] * 2
-                        tmp_list[j], tmp_list[j+1] = 0, tmp_list[j] * 2
-                while 0 in tmp_list:
-                    tmp_list.remove(0)
-                while len(tmp_list) != 4:
-                    tmp_list = [0] + tmp_list
+                tmp_list = self.move_aid(tmp_list, in_front= True)
                 self.board = self.board[:i] + tmp_list + self.board[i+4:]
 
         tmp_idx_lst  =[]
@@ -155,6 +117,30 @@ class System(object):
         if self.board == start_board:
             print(self.counter)
             exit()
+
+    def move_aid(self, lst:list[int], in_front:bool = True):
+        work_list = lst
+        current_value = (0, -1)
+        for i in range(len(work_list)):
+            if in_front: # Check for direction as right/down need inverted list iteration for right combining of values
+                i = -(i+1)
+            if work_list[i] == 0:
+                continue
+            else:
+                if current_value[0] != work_list[i]:
+                    current_value = (work_list[i], i)
+                elif current_value[0] == work_list[i]:
+                    self.counter += current_value[0] * 2
+                    work_list[current_value[1]] = current_value[0] * 2
+                    work_list[i] = 0
+                    current_value = (0, -1)
+        work_list = [y for y in work_list if y != 0]
+        while len(work_list) != 4:
+            if in_front:
+                work_list = [0] + work_list
+            else:
+                work_list.append(0)
+        return work_list
 
     def start(self):
         self.gui.load_board(self.board)
