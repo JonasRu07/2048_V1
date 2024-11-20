@@ -117,23 +117,7 @@ class System(object):
         if change:
             self.board = start_board
             self.counter = tmp_counter
-
-            tmp_idx_lst  =[]
-            while True:
-                new_piece_index = randint(0,15)
-                if new_piece_index not in tmp_idx_lst:
-                    tmp_idx_lst.append(new_piece_index)
-                    if start_board[new_piece_index] == 0:
-                        new_piece_value = randint(1, 2 ) * 2
-                        self.counter += new_piece_value
-                        start_board[new_piece_index] = new_piece_value
-                        break
-                if len(tmp_idx_lst) >= 16:
-                    break
-            self.gui.update_counter(self.counter)
-            self.gui.load_board(self.board)
-            if not self.possible_moves_available(self.board):
-                print("!!! STOPP !!! STOPP !!!")
+            self.__post_move_actions()
         else:
             if start_board == self.board:
                 return False
@@ -183,6 +167,24 @@ class System(object):
                 return True
             else:
                 return False
+
+    def __post_move_actions(self):
+        tmp_idx_lst = []
+        while True:
+            new_piece_index = randint(0, 15)
+            if new_piece_index not in tmp_idx_lst:
+                tmp_idx_lst.append(new_piece_index)
+                if self.board[new_piece_index] == 0:
+                    new_piece_value = randint(1, 2) * 2
+                    self.counter += new_piece_value
+                    self.board[new_piece_index] = new_piece_value
+                    break
+            if len(tmp_idx_lst) >= 16:
+                break
+        self.gui.update_counter(self.counter)
+        self.gui.load_board(self.board)
+        if not self.possible_moves_available(self.board):
+            print("!!! STOPP !!! STOPP !!!")
 
     def start(self):
         self.gui.load_board(self.board)
