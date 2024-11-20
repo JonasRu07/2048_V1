@@ -3,7 +3,7 @@ from random import randint, seed
 from math import log
 from copy import deepcopy
 from sys import exit
-seed(1)
+seed()
 
 #TODO: !! proper check if no available move is possible; don't rely on smart people to not fuck up
 #TODO: optimise move -> redundant code, just moving things in general
@@ -11,6 +11,9 @@ seed(1)
 #TODO: DOCUMENT THE SHIT OUT OF THIS
 
 class GUI(object):
+    """
+    Visual interface of the game "2048"
+    """
     def __init__(self):
         self.system : System | None = None
 
@@ -27,6 +30,7 @@ class GUI(object):
                                '#f95d3d', '#edce74', '#eccc61', '#ebc74f',
                                '#eec33e', '#edc229', '#ef666d', '#ed4d59',
                                '#e14338', '#72b3d9', '#5ca0dd', '#007bbe']
+
         self.list_fields:list[tk.Label] = []
         for i in range(16):
             self.list_fields.append(
@@ -72,32 +76,41 @@ class GUI(object):
         self.system = ref_system
 
 class System(object):
+    """
+    The "brain" of the program. It keeps trak of the current position and other values stored. All, calculation take
+    here place and are given out as parameters
+    """
     def __init__(self):
         self.gui: GUI | None = None
-        self.board = [0]*16
-        self.counter = 0
+        self.board: list[int] = [0]*16
+        self.counter: int = 0
 
-    def move(self, event:str):
+    def move(self, event: str) -> None:
+        """
+        control of all possible moves, currently all main action happening here
+        :param event: event of the arrow keys of a keyboard
+        :return: None
+        """
         start_board = deepcopy(self.board)
         if event == 'Up':
             for i in range(4):
                 tmp_list = [self.board[i]] + [self.board[i + 4]] + [self.board[i + 8]] + [self.board[i + 12]]
-                tmp_list = self.move_aid(tmp_list, in_front=False)
+                tmp_list = self.__move_aid(tmp_list, in_front=False)
                 self.board[i], self.board[i + 4], self.board[i + 8], self.board[i + 12] = tmp_list
         elif event == 'Down':
             for i in range(4):
                 tmp_list = [self.board[i]] + [self.board[i + 4]] + [self.board[i + 8]] + [self.board[i + 12]]
-                tmp_list = self.move_aid(tmp_list, in_front=True)
+                tmp_list = self.__move_aid(tmp_list, in_front=True)
                 self.board[i], self.board[i + 4], self.board[i + 8], self.board[i + 12] = tmp_list
         elif event == 'Left':
             for i in range(0, 16, 4):
                 tmp_list = self.board[i:i+4]
-                tmp_list = self.move_aid(tmp_list, in_front=False)
+                tmp_list = self.__move_aid(tmp_list, in_front=False)
                 self.board = self.board[:i] + tmp_list + self.board[i+4:]
         elif event == 'Right':
             for i in range(0, 16, 4):
                 tmp_list = self.board[i:i+4]
-                tmp_list = self.move_aid(tmp_list, in_front= True)
+                tmp_list = self.__move_aid(tmp_list, in_front= True)
                 self.board = self.board[:i] + tmp_list + self.board[i+4:]
 
         tmp_idx_lst  =[]
@@ -118,7 +131,15 @@ class System(object):
             print(self.counter)
             exit()
 
-    def move_aid(self, lst:list[int], in_front:bool = True):
+    def __move_aid(self, lst: list[int], in_front: bool = True) -> list[int]:
+        """
+        support method for move \n
+        checking for two fields to merge together and moving them around the board
+        :param lst: list of 4 fields of a line that will move together
+        :param in_front: if the list needs to be filled up from the front or the back, also used for checking the
+         direction multiple fields should be merged together in case of ex. 3 same valued fields next to each other
+        :return: list with merged and added fields
+        """
         work_list = lst
         current_value = (0, -1)
         for i in range(len(work_list)):
