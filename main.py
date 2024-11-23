@@ -2,8 +2,7 @@ import tkinter as tk
 from random import randint, seed
 from math import log
 from copy import deepcopy
-from sys import exit
-seed(1)
+seed()
 
 #TODO: optimise move -> redundant code, just moving things in general
 #TODO: general code structure -> packing things together which belong together
@@ -50,13 +49,17 @@ class GUI(object):
         self.root.bind('<Right>', self.event_move)
         self.root.bind('<Escape>', self.destroy)
 
-    def load_board(self, board:list[int]):
-        for index, value in enumerate(board):
-            self.list_fields[index].config(text=value if value != 0 else '')
-            if value > 0:
-                self.list_fields[index].config(bg=self.colours_fields[int(log(value, 2))])
+    def load_board(self, board:list[list[int]]):
+        for i in range(16):
+            field = self.list_fields[i]
+            value = board[i%4][i//4]
+            if value != 0:
+                colour = self.colours_fields[int(log(value, 2))]
+                field.config(text=value,
+                             bg=colour)
             else:
-                self.list_fields[index].config(bg=self.colours_fields[0])
+                field.config(text='',
+                             bg=self.colours_fields[0])
 
     def update_counter(self, value):
         self.label_counter.config(text=value)
@@ -81,7 +84,10 @@ class System(object):
     """
     def __init__(self):
         self.gui: GUI | None = None
-        self.board: list[int] = [0]*16
+        self.board: list[list[int]] = [[0, 0, 0, 0],
+                                       [0, 0, 0, 0],
+                                       [0, 0, 0, 0],
+                                       [0, 0, 0, 0]]
         self.counter: int = 0
 
     def move(self, event: str, change: bool = True) -> bool | None:
@@ -94,25 +100,27 @@ class System(object):
         start_board = deepcopy(self.board)
         tmp_counter = deepcopy(self.counter)
         if event == 'Up':
-            for i in range(4):
-                tmp_list = [start_board[i]] + [start_board[i + 4]] + [start_board[i + 8]] + [start_board[i + 12]]
+            for i in range(0, 4):
+                tmp_list = start_board[i]
                 tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
-                start_board[i], start_board[i + 4], start_board[i + 8], start_board[i + 12] = tmp_list
+                start_board[i] = tmp_list
         elif event == 'Down':
-            for i in range(4):
-                tmp_list = [start_board[i]] + [start_board[i + 4]] + [start_board[i + 8]] + [start_board[i + 12]]
+            for i in range(0, 4):
+                tmp_list = start_board[i]
                 tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
-                start_board[i], start_board[i + 4], start_board[i + 8], start_board[i + 12] = tmp_list
+                start_board[i] = tmp_list
         elif event == 'Left':
-            for i in range(0, 16, 4):
-                tmp_list = start_board[i:i+4]
+            for i in range(4):
+                tmp_list = [start_board[0][i]] + [start_board[1][i]] + [start_board[2][i]] + [start_board[3][i]]
                 tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
-                start_board = start_board[:i] + tmp_list + start_board[i+4:]
+                for j in range(4):
+                    start_board[j][i] = tmp_list[j]
         elif event == 'Right':
-            for i in range(0, 16, 4):
-                tmp_list = start_board[i:i+4]
+            for i in range(4):
+                tmp_list = [start_board[0][i]] +[start_board[1][i]] +[start_board[2][i]] +[start_board[3][i]]
                 tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
-                start_board = start_board[:i] + tmp_list + start_board[i+4:]
+                for j in range(4):
+                    start_board[j][i] = tmp_list[j]
 
         if change:
             self.board = start_board
@@ -156,35 +164,39 @@ class System(object):
                 work_list.append(0)
         return work_list, counter
 
-    def possible_moves_available(self, check_board:list[int]) -> bool:
-        if 0 in check_board:
-            return True
-        else:
-            if self.move('Up', False) or \
-                    self.move('Down', False) or \
-                    self.move('Right', False) or \
-                    self.move('Left', False):
+    def possible_moves_available(self, check_board:list[list[int]]) -> bool:
+        for i in range(4):
+            if 0 in check_board:
                 return True
             else:
-                return False
+                if self.move('Up', False) or \
+                        self.move('Down', False) or \
+                        self.move('Right', False) or \
+                        self.move('Left', False):
+                    return True
+                else:
+                    return False
 
     def __post_move_actions(self):
+
         tmp_idx_lst = []
         while True:
             new_piece_index = randint(0, 15)
             if new_piece_index not in tmp_idx_lst:
                 tmp_idx_lst.append(new_piece_index)
-                if self.board[new_piece_index] == 0:
+                if self.board[new_piece_index // 4][new_piece_index % 4] == 0:
                     new_piece_value = randint(1, 2) * 2
                     self.counter += new_piece_value
-                    self.board[new_piece_index] = new_piece_value
+                    self.board[new_piece_index // 4][new_piece_index % 4] = new_piece_value
                     break
             if len(tmp_idx_lst) >= 16:
                 break
+
         self.gui.update_counter(self.counter)
         self.gui.load_board(self.board)
         if not self.possible_moves_available(self.board):
             print("!!! STOPP !!! STOPP !!!")
+
 
     def start(self):
         self.gui.load_board(self.board)
