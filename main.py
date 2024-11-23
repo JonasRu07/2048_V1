@@ -4,9 +4,7 @@ from math import log
 from copy import deepcopy
 seed()
 
-#TODO: optimise move -> redundant code, just moving things in general
-#TODO: general code structure -> packing things together which belong together
-#TODO: DOCUMENT THE SHIT OUT OF THIS
+#TODO: optimise move -> redundant code (ex. gui.update_...(), same params with nearly the same execution)
 
 class GUI(object):
     """
@@ -24,6 +22,7 @@ class GUI(object):
                                      width=310,
                                      height=310)
         self.frame_fields.place(x=40, y=40)
+
         self.colours_fields = ['#ebdfc7', '#f3b179', '#f59561', '#f57c5f',
                                '#f95d3d', '#edce74', '#eccc61', '#ebc74f',
                                '#eec33e', '#edc229', '#ef666d', '#ed4d59',
@@ -43,11 +42,18 @@ class GUI(object):
                                       text='NAN')
         self.label_counter.place(x=370, y=40, width=100, height=40)
 
+        self.label_last_score = tk.Label(master=self.root,
+                                        bg='white',
+                                        font='Aral, 20',
+                                        text='NAN')
+        self.label_last_score.place(x=370, y=100, width=100, height=40)
+
         self.label_highscore = tk.Label(master=self.root,
                                         bg='white',
                                         font='Aral, 20',
                                         text='NAN')
-        self.label_highscore.place(x=370, y=100, width=100, height=40)
+        self.label_highscore.place(x=370, y=160, width=100, height=40)
+
 
         self.root.bind('<Up>', self.event_move)
         self.root.bind('<Down>', self.event_move)
@@ -69,6 +75,9 @@ class GUI(object):
 
     def update_counter(self, value:int):
         self.label_counter.config(text=value)
+
+    def update_last_score(self, value:int):
+        self.label_last_score.config(text=value)
 
     def update_highscore(self, value:int):
         self.label_highscore.config(text=value)
@@ -142,6 +151,19 @@ class System(object):
             else:
                 return True
 
+    def possible_moves_available(self, check_board:list[list[int]]) -> bool:
+        for i in range(4):
+            if 0 in check_board:
+                return True
+            else:
+                if self.move('Up', False) or \
+                        self.move('Down', False) or \
+                        self.move('Right', False) or \
+                        self.move('Left', False):
+                    return True
+                else:
+                    return False
+
     def __move_aid(self, lst: list[int], counter:int, in_front: bool = True) -> (list[int], int):
         """
         support method for move \n
@@ -174,19 +196,6 @@ class System(object):
                 work_list.append(0)
         return work_list, counter
 
-    def possible_moves_available(self, check_board:list[list[int]]) -> bool:
-        for i in range(4):
-            if 0 in check_board:
-                return True
-            else:
-                if self.move('Up', False) or \
-                        self.move('Down', False) or \
-                        self.move('Right', False) or \
-                        self.move('Left', False):
-                    return True
-                else:
-                    return False
-
     def __post_move_actions(self):
 
         tmp_idx_lst = []
@@ -206,6 +215,7 @@ class System(object):
             self.highscore = self.counter
             self.gui.update_highscore(self.highscore)
         if not self.possible_moves_available(self.board):
+            self.gui.update_last_score(self.counter)
             self.counter = 0
             self.board = [[0, 0, 0, 0],
                           [0, 0, 0, 0],
