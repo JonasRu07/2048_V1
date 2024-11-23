@@ -2,7 +2,7 @@ import tkinter as tk
 from random import randint, seed
 from math import log
 from copy import deepcopy
-seed()
+seed(7)
 
 #TODO: optimise move -> redundant code (ex. gui.update_...(), same params with nearly the same execution)
 
@@ -23,10 +23,11 @@ class GUI(object):
                                      height=310)
         self.frame_fields.place(x=40, y=40)
 
-        self.colours_fields = ['#ebdfc7', '#f3b179', '#f59561', '#f57c5f',
-                               '#f95d3d', '#edce74', '#eccc61', '#ebc74f',
-                               '#eec33e', '#edc229', '#ef666d', '#ed4d59',
-                               '#e14338', '#72b3d9', '#5ca0dd', '#007bbe']
+        #Each colour has 2 states (active, passive), represented with a tuple with corresponding colours
+        self.colours_fields = [('#ebdfc7', '#ff0000'), ('#f3b179', '#f39189'), ('#f59561', '#f58581'), ('#f57c5f', '#f58c7f'),
+                               ('#f95d3d', '#f97d5d'), ('#edce74', '#edae84'), ('#eccc61', '#ecac81'), ('#ebc74f', '#eba76f'),
+                               ('#eec33e', '#eea35e'), ('#edc229', '#eda249'), ('#ef666d', '#ef868d'), ('#ed4d59', '#ed6d79'),
+                               ('#e14338', '#e16358'), ('#72b3d9', '#7293b9'), ('#5ca0dd', '#5c80bd'), ('#007bbe', '#00809e')]
 
         self.list_fields:list[tk.Label] = []
         for i in range(16):
@@ -54,24 +55,31 @@ class GUI(object):
                                         text='NAN')
         self.label_highscore.place(x=370, y=160, width=100, height=40)
 
-
         self.root.bind('<Up>', self.event_move)
         self.root.bind('<Down>', self.event_move)
         self.root.bind('<Left>', self.event_move)
         self.root.bind('<Right>', self.event_move)
         self.root.bind('<Escape>', self.destroy)
+        self.root.bind('<Return>', self.restart)
 
-    def load_board(self, board:list[list[int]]):
+    def load_board(self, board:list[list[int]], is_active: bool = True) -> None:
+        """
+        loads a bord
+        :param board: 4 list with 4 ints each nested in 1 list; Integers are intended to be 2^x
+        :param is_active: optional arg, if the active or passive colour should be used
+        :return: None
+        """
+        state = 0 if is_active else 1
         for i in range(16):
             field = self.list_fields[i]
             value = board[i%4][i//4]
             if value != 0:
-                colour = self.colours_fields[int(log(value, 2))]
+                colour = self.colours_fields[int(log(value, 2))][state]
                 field.config(text=value,
                              bg=colour)
             else:
                 field.config(text='',
-                             bg=self.colours_fields[0])
+                             bg=self.colours_fields[0][state])
 
     def update_counter(self, value:int):
         self.label_counter.config(text=value)
@@ -86,8 +94,10 @@ class GUI(object):
         self.system.move(event.keysym)
 
     def destroy(self, event):
-        print(event)
         self.root.destroy()
+
+    def restart(self, event):
+        self.system.restart_the_game()
 
     def start(self):
         self.root.mainloop()
@@ -106,6 +116,7 @@ class System(object):
                                        [0, 0, 0, 0],
                                        [0, 0, 0, 0],
                                        [0, 0, 0, 0]]
+        self.active: bool = True
         self.counter: int = 0
         self.highscore: int = 0
 
@@ -116,40 +127,41 @@ class System(object):
         :param change: if the board should be updated
         :return: None
         """
-        start_board = deepcopy(self.board)
-        tmp_counter = deepcopy(self.counter)
-        if event == 'Up':
-            for i in range(0, 4):
-                tmp_list = start_board[i]
-                tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
-                start_board[i] = tmp_list
-        elif event == 'Down':
-            for i in range(0, 4):
-                tmp_list = start_board[i]
-                tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
-                start_board[i] = tmp_list
-        elif event == 'Left':
-            for i in range(4):
-                tmp_list = [start_board[0][i]] + [start_board[1][i]] + [start_board[2][i]] + [start_board[3][i]]
-                tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
-                for j in range(4):
-                    start_board[j][i] = tmp_list[j]
-        elif event == 'Right':
-            for i in range(4):
-                tmp_list = [start_board[0][i]] +[start_board[1][i]] +[start_board[2][i]] +[start_board[3][i]]
-                tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
-                for j in range(4):
-                    start_board[j][i] = tmp_list[j]
+        if self.active:
+            start_board = deepcopy(self.board)
+            tmp_counter = deepcopy(self.counter)
+            if event == 'Up':
+                for i in range(0, 4):
+                    tmp_list = start_board[i]
+                    tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
+                    start_board[i] = tmp_list
+            elif event == 'Down':
+                for i in range(0, 4):
+                    tmp_list = start_board[i]
+                    tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
+                    start_board[i] = tmp_list
+            elif event == 'Left':
+                for i in range(4):
+                    tmp_list = [start_board[0][i]] + [start_board[1][i]] + [start_board[2][i]] + [start_board[3][i]]
+                    tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
+                    for j in range(4):
+                        start_board[j][i] = tmp_list[j]
+            elif event == 'Right':
+                for i in range(4):
+                    tmp_list = [start_board[0][i]] +[start_board[1][i]] +[start_board[2][i]] +[start_board[3][i]]
+                    tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
+                    for j in range(4):
+                        start_board[j][i] = tmp_list[j]
 
-        if change:
-            self.board = start_board
-            self.counter = tmp_counter
-            self.__post_move_actions()
-        else:
-            if start_board == self.board:
-                return False
+            if change:
+                self.board = start_board
+                self.counter = tmp_counter
+                self.__post_move_actions()
             else:
-                return True
+                if start_board == self.board:
+                    return False
+                else:
+                    return True
 
     def possible_moves_available(self, check_board:list[list[int]]) -> bool:
         for i in range(4):
@@ -214,15 +226,13 @@ class System(object):
         if self.counter >= self.highscore:
             self.highscore = self.counter
             self.gui.update_highscore(self.highscore)
-        if not self.possible_moves_available(self.board):
-            self.gui.update_last_score(self.counter)
-            self.counter = 0
-            self.board = [[0, 0, 0, 0],
-                          [0, 0, 0, 0],
-                          [0, 0, 0, 0],
-                          [0, 0, 0, 0]]
-        self.gui.update_counter(self.counter)
         self.gui.load_board(self.board)
+        if not self.possible_moves_available(self.board):
+            self.active = False
+            self.gui.update_last_score(self.counter)
+            self.gui.load_board(self.board, False)
+
+        self.gui.update_counter(self.counter)
 
     def start(self):
         self.gui.load_board(self.board)
@@ -230,6 +240,17 @@ class System(object):
 
     def set_gui(self, ref_gui):
         self.gui = ref_gui
+
+    def restart_the_game(self):
+        self.board = [[0, 0, 0, 0],
+                      [0, 0 ,0, 0],
+                      [0, 0, 0, 0],
+                      [0, 0, 0, 0]]
+        self.gui.load_board(self.board)
+        self.gui.update_last_score(self.counter)
+        self.counter = 0
+        self.gui.update_counter(self.counter)
+        self.active = True
 
 
 #Code execution and setup
