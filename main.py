@@ -37,11 +37,17 @@ class GUI(object):
             )
             self.list_fields[i].place(x=(i%4)*70 + 20, y=(i//4)*70 + 20, width=60, height=60)
 
-        self.label_counter = tk.Label(master = self.root,
+        self.label_counter = tk.Label(master=self.root,
                                       bg='#11998e',
                                       font='Aral, 20',
                                       text='NAN')
         self.label_counter.place(x=370, y=40, width=100, height=40)
+
+        self.label_highscore = tk.Label(master=self.root,
+                                        bg='white',
+                                        font='Aral, 20',
+                                        text='NAN')
+        self.label_highscore.place(x=370, y=100, width=100, height=40)
 
         self.root.bind('<Up>', self.event_move)
         self.root.bind('<Down>', self.event_move)
@@ -61,8 +67,11 @@ class GUI(object):
                 field.config(text='',
                              bg=self.colours_fields[0])
 
-    def update_counter(self, value):
+    def update_counter(self, value:int):
         self.label_counter.config(text=value)
+
+    def update_highscore(self, value:int):
+        self.label_highscore.config(text=value)
 
     def event_move(self, event:tk.Event):
         self.system.move(event.keysym)
@@ -89,6 +98,7 @@ class System(object):
                                        [0, 0, 0, 0],
                                        [0, 0, 0, 0]]
         self.counter: int = 0
+        self.highscore: int = 0
 
     def move(self, event: str, change: bool = True) -> bool | None:
         """
@@ -192,11 +202,17 @@ class System(object):
             if len(tmp_idx_lst) >= 16:
                 break
 
+        if self.counter >= self.highscore:
+            self.highscore = self.counter
+            self.gui.update_highscore(self.highscore)
+        if not self.possible_moves_available(self.board):
+            self.counter = 0
+            self.board = [[0, 0, 0, 0],
+                          [0, 0, 0, 0],
+                          [0, 0, 0, 0],
+                          [0, 0, 0, 0]]
         self.gui.update_counter(self.counter)
         self.gui.load_board(self.board)
-        if not self.possible_moves_available(self.board):
-            print("!!! STOPP !!! STOPP !!!")
-
 
     def start(self):
         self.gui.load_board(self.board)
