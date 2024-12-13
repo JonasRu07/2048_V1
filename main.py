@@ -2,7 +2,7 @@ import tkinter as tk
 from random import randint, seed
 from math import log
 from copy import deepcopy
-seed(7)
+seed()
 
 #TODO: optimise move -> redundant code (ex. gui.update_...(), same params with nearly the same execution)
 
@@ -74,7 +74,7 @@ class GUI(object):
             field = self.list_fields[i]
             value = board[i%4][i//4]
             if value != 0:
-                colour = self.colours_fields[int(log(value, 2))][state]
+                colour = self.colours_fields[int(log(value, 2))-1][state]
                 field.config(text=value,
                              bg=colour)
             else:
@@ -91,7 +91,7 @@ class GUI(object):
         self.label_highscore.config(text=value)
 
     def event_move(self, event:tk.Event):
-        self.system.move(event.keysym)
+        self.system.initial_call(event.keysym)
 
     def destroy(self, event):
         self.root.destroy()
@@ -116,73 +116,74 @@ class System(object):
                                        [0, 0, 0, 0],
                                        [0, 0, 0, 0],
                                        [0, 0, 0, 0]]
+        self.board[randint(0, 3)][randint(0, 3)] = 2
         self.active: bool = True
         self.counter: int = 0
         self.highscore: int = 0
 
-    def move(self, event: str, change: bool = True) -> bool | None:
+    def initial_call(self, event: str, change: bool = True) -> bool | None:
         """
         control of all possible moves, currently all main action happening here
         :param event: event of the arrow keys of a keyboard
         :param change: if the board should be updated
         :return: None
         """
-        if self.active:
-            start_board = deepcopy(self.board)
-            tmp_counter = deepcopy(self.counter)
-            if event == 'Up':
-                for i in range(0, 4):
-                    tmp_list = start_board[i]
-                    tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
-                    start_board[i] = tmp_list
-            elif event == 'Down':
-                for i in range(0, 4):
-                    tmp_list = start_board[i]
-                    tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
-                    start_board[i] = tmp_list
-            elif event == 'Left':
-                for i in range(4):
-                    tmp_list = [start_board[0][i]] + [start_board[1][i]] + [start_board[2][i]] + [start_board[3][i]]
-                    tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=False)
-                    for j in range(4):
-                        start_board[j][i] = tmp_list[j]
-            elif event == 'Right':
-                for i in range(4):
-                    tmp_list = [start_board[0][i]] +[start_board[1][i]] +[start_board[2][i]] +[start_board[3][i]]
-                    tmp_list, tmp_counter = self.__move_aid(tmp_list, tmp_counter, in_front=True)
-                    for j in range(4):
-                        start_board[j][i] = tmp_list[j]
+        if self.active and self.are_possible_moves_available([event]):
+            tmp_data= self.move_logic(event)
+            work_board = tmp_data[0]
+            tmp_counter = tmp_data[1]
 
             if change:
-                self.board = start_board
+                self.board = work_board
                 self.counter = tmp_counter
                 self.__post_move_actions()
             else:
-                if start_board == self.board:
+                if work_board == self.board:
                     return False
                 else:
                     return True
 
-    def possible_moves_available(self, check_board:list[list[int]]) -> bool:
-        for i in range(4):
-            if 0 in check_board:
-                return True
-            else:
-                if self.move('Up', False) or \
-                        self.move('Down', False) or \
-                        self.move('Right', False) or \
-                        self.move('Left', False):
-                    return True
-                else:
-                    return False
+    def move_logic(self, event: str) -> tuple[list[list[int]], int]:
+        start_board = deepcopy(self.board)
+        tmp_counter = deepcopy(self.counter)
+        if event == 'Up':
+            for i in range(0, 4):
+                tmp_list = start_board[i]
+                tmp_list, tmp_counter = self.merge_and_move(tmp_list, tmp_counter, in_front=False)
+                start_board[i] = tmp_list
+        elif event == 'Down':
+            for i in range(0, 4):
+                tmp_list = start_board[i]
+                tmp_list, tmp_counter = self.merge_and_move(tmp_list, tmp_counter, in_front=True)
+                start_board[i] = tmp_list
+        elif event == 'Left':
+            for i in range(4):
+                tmp_list = [start_board[0][i]] + [start_board[1][i]] + [start_board[2][i]] + [start_board[3][i]]
+                tmp_list, tmp_counter = self.merge_and_move(tmp_list, tmp_counter, in_front=False)
+                for j in range(4):
+                    start_board[j][i] = tmp_list[j]
+        elif event == 'Right':
+            for i in range(4):
+                tmp_list = [start_board[0][i]] + [start_board[1][i]] + [start_board[2][i]] + [start_board[3][i]]
+                tmp_list, tmp_counter = self.merge_and_move(tmp_list, tmp_counter, in_front=True)
+                for j in range(4):
+                    start_board[j][i] = tmp_list[j]
+        return start_board, tmp_counter
 
-    def __move_aid(self, lst: list[int], counter:int, in_front: bool = True) -> (list[int], int):
+    def are_possible_moves_available(self, check_dir: list[str]) -> bool:
+        found_legal_move: bool = False
+        for direction in check_dir:
+            if not self.board == self.move_logic(direction):
+                found_legal_move = True
+        return found_legal_move
+
+    def merge_and_move(self, lst: list[int], counter:int, in_front: bool = True) -> tuple[list[int], int]:
         """
         support method for move \n
         checking for two fields to merge together and moving them around the board
         :param lst: list of 4 fields of a line that will move together
-        :param in_front: if the list needs to be filled up from the front or the back, also used for checking the
-         direction multiple fields should be merged together in case of ex. 3 same valued fields next to each other
+        :param in_front: dir of filling the list up and merging same fields
+        :param counter: the current score
         :return: list with merged and added fields
         """
         work_list = lst
@@ -223,11 +224,12 @@ class System(object):
             if len(tmp_idx_lst) >= 16:
                 break
 
-        if self.counter >= self.highscore:
+        if self.highscore <= self.counter:
             self.highscore = self.counter
             self.gui.update_highscore(self.highscore)
         self.gui.load_board(self.board)
-        if not self.possible_moves_available(self.board):
+        if not self.are_possible_moves_available(['Up', 'Right', 'Down', 'Left']):
+            print('No legal move was found')
             self.active = False
             self.gui.update_last_score(self.counter)
             self.gui.load_board(self.board, False)
@@ -246,16 +248,20 @@ class System(object):
                       [0, 0 ,0, 0],
                       [0, 0, 0, 0],
                       [0, 0, 0, 0]]
+        self.board[randint(0, 3)][randint(0, 3)] = 2
         self.gui.load_board(self.board)
         self.gui.update_last_score(self.counter)
         self.counter = 0
         self.gui.update_counter(self.counter)
         self.active = True
 
+def main():
+    #Code execution and setup
+    gui = GUI()
+    system = System()
+    system.set_gui(gui)
+    gui.set_system(system)
+    system.start()
 
-#Code execution and setup
-gui = GUI()
-system = System()
-system.set_gui(gui)
-gui.set_system(system)
-system.start()
+if __name__ == '__main__':
+    main()
